@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	mockClient := mockhttp.NewClient()
+	mockClient := mockhttp.NewClient(mockhttp.DefaultResolver())
 	mockClient.Delay = 100 * time.Millisecond
 	mockClient.StandardClient().Timeout = 1 * time.Minute
 

@@ -1,0 +1,16 @@
+path: api/v2/sippva/fixed_va/inquiry/
+method: POST
+desc: SPM Inquiry Endpoint
+responses:
+  - response_headers:
+      Content-Type: application/json
+    response_body: "{\"user_name\": \"Mocker\",\r\n  \"max_allowed_money_per_trx\": 10000,\r\n  \"inquiry_token\": \"xxx\",\r\n  \"user_id\": \"-\",\r\n  \"topup_admin_fee\": 1000}"
+    status_code: 200
+  - response_headers:
+      Content-Type: application/json
+    response_body: "{\"user_name\": \"William\",\r\n \"status_code\": 488,\r\n  \"error\": \"SPM Server Error\"}"
+    delay: 1000
+    status_code: 488
+    enable_template: false
+    rules:
+      - body.va == "706081274966275"

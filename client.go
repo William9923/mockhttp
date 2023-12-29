@@ -38,12 +38,9 @@ var (
 	// defaultLogger is the logger provided with defaultClient
 	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 
-	// defaultResolver is the req => resp mock resolver
-	defaultResolver = standardResolver{} // TODO: change implementation
-
 	// defaultClient is used for performing requests without explicitly making
 	// a new client. It is purposely private to avoid modifications.
-	defaultClient = NewClient()
+	defaultClient = NewClient(DefaultResolver())
 
 	// We need to consume response bodies to maintain http connections, but
 	// limit the size we consume to respReadLimit.
@@ -68,13 +65,9 @@ type Client struct {
 	// with the response from each HTTP request executed.
 	ResponseLogHook ResponseLogHook
 
-	// CheckRetry specifies the policy for handling mock, and is called
-	// befeore each request. The default policy is DefaultMockPolicy.
-	CheckMock CheckMock
-
 	// MockStore represents the datastore.
 	// The built-in library provides file-based datastore, but it can be easily extended.
-	Resolver Resolver
+	Resolver ResolverAdapter
 
 	// Delay specifies the delay if mock http call occurs. Default is 0ms
 	Delay time.Duration
@@ -84,20 +77,13 @@ type Client struct {
 }
 
 // NewClient creates a new Client with default settings.
-func NewClient() *Client {
+func NewClient(resolver ResolverAdapter) *Client {
 	return &Client{
 		HTTPClient: cleanhttp.DefaultPooledClient(),
 		Logger:     defaultLogger,
-		CheckMock:  DefaultMockPolicy,
 		Delay:      defaultDelay,
-		Resolver:   defaultResolver,
+		Resolver:   resolver,
 	}
-}
-
-// WithResolver returns client with custom resolver to finding the mock
-func (c *Client) WithResolver(resolver Resolver) *Client {
-	c.Resolver = resolver
-	return c
 }
 
 func (c *Client) logger() interface{} {
@@ -139,8 +125,6 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	}
 
 	var resp *http.Response
-	var shouldMock bool
-
 	if req.body != nil {
 		body, readErr := req.body()
 		if readErr != nil {
@@ -166,10 +150,9 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	}
 
 	// Check if we should continue with actual http call / use mock
-	shouldMock, _ = c.CheckMock(req.Context(), req)
-	if shouldMock {
-		time.Sleep(c.Delay - time.Since(startTime))
-		return c.Resolver.Resolve(req.Context(), req)
+	mockResponse, _ := c.Resolver.Resolve(req.Context(), req)
+	if mockResponse != nil {
+		return mockResponse, nil
 	}
 
 	// Attempt the request

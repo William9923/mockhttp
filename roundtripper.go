@@ -23,10 +23,10 @@ type RoundTripper struct {
 	once sync.Once
 }
 
-// init initializes the underlying retryable client.
+// init initializes the underlying mock http client.
 func (rt *RoundTripper) init() {
 	if rt.Client == nil {
-		rt.Client = NewClient()
+
 	}
 }
 
