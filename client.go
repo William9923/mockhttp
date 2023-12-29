@@ -1,5 +1,3 @@
-// Package mockhttp provides a familiar HTTP client interface with
-// mocking capabilities. It is a thin wrapper over the
 // standard net/http client library and exposes nearly the same public API.
 // This makes mocking http response very easy to drop into existing programs.
 //
@@ -21,7 +19,6 @@
 package mockhttp
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -40,6 +37,9 @@ var (
 
 	// defaultLogger is the logger provided with defaultClient
 	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
+
+	// defaultResolver is the req => resp mock resolver
+	defaultResolver = standardResolver{} // TODO: change implementation
 
 	// defaultClient is used for performing requests without explicitly making
 	// a new client. It is purposely private to avoid modifications.
@@ -72,6 +72,10 @@ type Client struct {
 	// befeore each request. The default policy is DefaultMockPolicy.
 	CheckMock CheckMock
 
+	// MockStore represents the datastore.
+	// The built-in library provides file-based datastore, but it can be easily extended.
+	Resolver Resolver
+
 	// Delay specifies the delay if mock http call occurs. Default is 0ms
 	Delay time.Duration
 
@@ -86,6 +90,17 @@ func NewClient() *Client {
 		Logger:     defaultLogger,
 		CheckMock:  DefaultMockPolicy,
 		Delay:      defaultDelay,
+		Resolver:   defaultResolver,
+	}
+}
+
+func NewClientWithResolver(resolver Resolver) *Client {
+	return &Client{
+		HTTPClient: cleanhttp.DefaultPooledClient(),
+		Logger:     defaultLogger,
+		CheckMock:  DefaultMockPolicy,
+		Delay:      defaultDelay,
+		Resolver:   resolver,
 	}
 }
 
@@ -157,12 +172,8 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	// Check if we should continue with actual http call / use mock
 	shouldMock, _ = c.CheckMock(req.Context(), req)
 	if shouldMock {
-		// TODO: utilize the parser and everything pls~
 		time.Sleep(c.Delay - time.Since(startTime))
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(nil)),
-		}, nil
+		return c.Resolver.Resolve(req.Context(), req)
 	}
 
 	// Attempt the request
