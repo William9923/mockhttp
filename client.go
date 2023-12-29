@@ -94,14 +94,10 @@ func NewClient() *Client {
 	}
 }
 
-func NewClientWithResolver(resolver Resolver) *Client {
-	return &Client{
-		HTTPClient: cleanhttp.DefaultPooledClient(),
-		Logger:     defaultLogger,
-		CheckMock:  DefaultMockPolicy,
-		Delay:      defaultDelay,
-		Resolver:   resolver,
-	}
+// WithResolver returns client with custom resolver to finding the mock
+func (c *Client) WithResolver(resolver Resolver) *Client {
+	c.Resolver = resolver
+	return c
 }
 
 func (c *Client) logger() interface{} {
