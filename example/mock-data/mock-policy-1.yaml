@@ -1,5 +1,6 @@
-path: api/v2/sippva/fixed_va/inquiry/
-method: POST
+host: google.com
+path: /inquiry
+method: GET
 desc: SPM Inquiry Endpoint
 responses:
   - response_headers:

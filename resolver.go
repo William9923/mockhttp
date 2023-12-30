@@ -41,6 +41,7 @@ func NewFileResolverAdapter(dir string) (ResolverAdapter, error) {
 
 // --- Model ---
 type FileBasedMockPolicy struct {
+	Host      string         `yaml:"host"`
 	Path      string         `yaml:"path"`
 	Method    string         `yaml:"method"`
 	Desc      string         `yaml:"desc"`
@@ -83,6 +84,7 @@ func (p params) export() map[string]interface{} {
 }
 
 type incomingRequest struct {
+	Host        string
 	Method      string
 	Endpoint    string
 	Headers     params
@@ -160,35 +162,28 @@ func filterByCondition(collections []FileBasedMockPolicy, condition func(FileBas
 	return result
 }
 
-func (r *fileBasedResolver) getAllContainParamRoutes(method string) []FileBasedMockPolicy {
+type policyStore func(host, method string) []FileBasedMockPolicy
+
+func (r *fileBasedResolver) getAllContainParamRoutes(host, method string) []FileBasedMockPolicy {
 	var dataToQuery = r.policies
 	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return policy.Method == method
-	})
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return policy.containParams && !policy.containsWildcard
+		return policy.Method == method && policy.containParams && !policy.containsWildcard
 	})
 	return dataToQuery
 }
 
-func (r *fileBasedResolver) getAllExactEndpointRoutes(method string) []FileBasedMockPolicy {
+func (r *fileBasedResolver) getAllExactEndpointRoutes(host, method string) []FileBasedMockPolicy {
 	var dataToQuery = r.policies
 	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return policy.Method == method
-	})
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return !policy.containParams && !policy.containsWildcard
+		return policy.Method == method && policy.Host == host && !policy.containParams && !policy.containsWildcard
 	})
 	return dataToQuery
 }
 
-func (r *fileBasedResolver) getAllWildcardRoutes(method string) []FileBasedMockPolicy {
+func (r *fileBasedResolver) getAllWildcardRoutes(host, method string) []FileBasedMockPolicy {
 	var dataToQuery = r.policies
 	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return policy.Method == method
-	})
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
-		return policy.containParams && policy.containsWildcard
+		return policy.Method == method && policy.Host == host && policy.containParams && policy.containsWildcard
 	})
 	return dataToQuery
 }
@@ -217,18 +212,28 @@ func findWildcard(params []string) bool {
 		     token          = 1*<any CHAR except CTLs or separators>
 */
 func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Response, error) {
-	rawBody, err := extractRawBody(req)
-	if err != nil {
-		return nil, err
-	}
+
+	var (
+		err     error
+		body    map[string]interface{}
+		rawBody string
+	)
 
 	headers := extractHeader(req)
-	body, err := extractReqBody(req, headers)
-	if err != nil {
-		return nil, err
+
+	if in[string](req.Method, []string{http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete}) {
+		rawBody, err = extractRawBody(req)
+		if err != nil {
+			return nil, err
+		}
+		body, err = extractReqBody(req, headers)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	request := incomingRequest{
+		Host:        req.Host,
 		Method:      req.Method,
 		Endpoint:    pathregex.CleanPath(req.URL.EscapedPath()),
 		Headers:     headers,
@@ -253,11 +258,9 @@ func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Re
 	return r.generateResp(&request, mockResp)
 }
 
-type policyStore func(method string) []FileBasedMockPolicy
-
 func (r *fileBasedResolver) findMockResponse(request *incomingRequest, policiesFn []policyStore) (*mockResponse, error) {
 	for _, fn := range policiesFn {
-		for _, policy := range fn(request.Method) {
+		for _, policy := range fn(request.Host, request.Method) {
 			if isMatch := pathregex.MatchPath(request.Endpoint, policy.Path); isMatch {
 				params := pathregex.ExtractPathParam(request.Endpoint, policy.Path)
 				request.RouteParams = params

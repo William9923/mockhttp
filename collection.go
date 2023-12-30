@@ -2,6 +2,12 @@ package mockhttp
 
 import "fmt"
 
+func in[T comparable](current T, collections []T) bool {
+	return satisfyAtLeastOne[T](collections, func(param T) bool {
+		return param == current
+	})
+}
+
 func satisfyAtLeastOne[T any](collections []T, fn func(T) bool) bool {
 	for _, data := range collections {
 		if fn(data) {

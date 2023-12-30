@@ -2,6 +2,7 @@ package mockhttp
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/expr-lang/expr"
 )
@@ -25,6 +26,10 @@ var parsedBodyMimeTypes = append(append(parsedJSONBodyMimeTypes, parsedXMLBodyMi
 
 func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 
+	if !in[string](req.Method, []string{http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete}) {
+		return nil
+	}
+
 	headers := req.Headers
 	contentType, exist := headers["Content-Type"]
 	if !exist {
@@ -41,6 +46,7 @@ func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 }
 
 func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolicy FileBasedMockPolicy) (*mockResponse, error) {
+
 	if err := r.validateTarget(request); err != nil {
 		return nil, err
 	}
@@ -49,6 +55,7 @@ func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolic
 
 func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy FileBasedMockPolicy) *mockResponse {
 
+	fmt.Println("hid choose response")
 	correctResponse, _ := find[mockResponse](policy.Responses, func(data mockResponse) bool {
 		// lower the priotization of non-rules affected response
 		if data.isDefault() {
