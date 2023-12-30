@@ -2,7 +2,6 @@ package mockhttp
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -17,7 +16,7 @@ type roundTripper struct {
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if rt.Client == nil {
-		return nil, fmt.Errorf("empty client")
+		return nil, ErrClientMissing
 	}
 
 	// Convert the request to be retryable.
