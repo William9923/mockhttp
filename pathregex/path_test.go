@@ -95,6 +95,7 @@ func TestCompilePath(t *testing.T) {
 
 var emptyParam = make(map[string]string)
 
+// Some example (for parameter in HTTP call path):
 //   "/",
 // "/cmd/:tool/:sub",
 // "/cmd/:tool/",
@@ -189,12 +190,13 @@ func TestMatchPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run("testing match path with pattern...", func(t *testing.T) {
-			isMatch, param := MatchPath(tt.args.path, tt.args.pattern)
+			isMatch := MatchPath(tt.args.path, tt.args.pattern)
 			if isMatch != tt.shouldMatch {
 				t.Errorf("MatchPath(%v, %v) is match = %v, expected %v", tt.args.path, tt.args.pattern, isMatch, tt.shouldMatch)
 			}
+			param := ExtractPathParam(tt.args.path, tt.args.pattern)
 			if !reflect.DeepEqual(param, tt.param) {
-				t.Errorf("MatchPath(%v, %v) param = %v, expected param %v", tt.args.path, tt.args.pattern, param, tt.param)
+				t.Errorf("ExtractPathParam(%v, %v) param = %v, expected param %v", tt.args.path, tt.args.pattern, param, tt.param)
 			}
 		})
 	}

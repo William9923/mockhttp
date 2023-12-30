@@ -151,7 +151,7 @@ func bufApp(buf *[]byte, s string, w int, c byte) {
 
 // CompilePath compile usual HTTP endpoint path to a canonical regex based path
 // for categorizing exact endpoint path, wildcard and path params.
-//
+// It output the canonical regular expression to match the path, and the path param names
 // The following process are applied:
 //
 //  1. Remove / ignore trailing / and /*
@@ -165,8 +165,6 @@ func bufApp(buf *[]byte, s string, w int, c byte) {
 //  5. Extract all path param (ex: /path/:id => id is path param)
 //
 //  6. Also extract if wildcards exist in path (ex: /path/*)
-//
-//     It output the canonical regular expression to match the path, and the path param names
 func CompilePath(path string, caseSensitive bool, end bool) (*regexp.Regexp, []string) {
 
 	regexpSource := regexp.MustCompile(`\/*\*?$`).ReplaceAllString(path, "")
