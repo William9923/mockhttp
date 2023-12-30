@@ -21,7 +21,6 @@ func main() {
 	}
 
 	mockClient := mockhttp.NewClient(resolver)
-	mockClient.Delay = 100 * time.Millisecond
 	mockClient.StandardClient().Timeout = 1 * time.Minute
 
 	resp, err := mockClient.Get("http://google.com")

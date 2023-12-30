@@ -207,20 +207,37 @@ func CompilePath(path string, caseSensitive bool, end bool) (*regexp.Regexp, []s
 // to check whether the pattern match / not.
 //
 //	It output the matching result (boolean), and the path param resolved values
-func MatchPath(path string, pattern string) (bool, map[string]string) {
+func MatchPath(path string, pattern string) bool {
 	matcher, paramNames := CompilePath(CleanPath(pattern), true, true)
 
 	res := matcher.FindStringSubmatch(path)
 	if res == nil {
-		return false, nil
+		return false
 	}
 
 	if len(paramNames) == 0 {
-		return true, make(map[string]string)
+		return true
 	}
 
 	if len(paramNames) != len(res)-1 {
-		return false, nil
+		return false
+	}
+	return true
+}
+
+func ExtractPathParam(path string, pattern string) map[string]string {
+	matcher, paramNames := CompilePath(CleanPath(pattern), true, true)
+	res := matcher.FindStringSubmatch(path)
+	if res == nil {
+		return nil
+	}
+
+	if len(paramNames) == 0 {
+		return make(map[string]string)
+	}
+
+	if len(paramNames) != len(res)-1 {
+		return nil
 	}
 
 	params := make(map[string]string)
@@ -229,5 +246,5 @@ func MatchPath(path string, pattern string) (bool, map[string]string) {
 		params[paramNames[idx]] = parseRes
 	}
 
-	return true, params
+	return params
 }

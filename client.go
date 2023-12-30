@@ -2,20 +2,6 @@
 // This makes mocking http response very easy to drop into existing programs.
 //
 // mockhttp performs mock if enabled. Inspired by retryablehttp by hashicorp.
-//
-// As noted from retryablehttp documentation:
-// Requests which take a request body should provide a non-nil function
-// parameter. The best choice is to provide either a function satisfying
-// ReaderFunc which provides multiple io.Readers in an efficient manner, a
-// *bytes.Buffer (the underlying raw byte slice will be used) or a raw byte
-// slice. As it is a reference type, and we will wrap it as needed by readers,
-// we can efficiently re-use the request body without needing to copy it. If an
-// io.Reader (such as a *bytes.Reader) is provided, the full body will be read
-// prior to the first request, and will be efficiently re-used for any retries.
-// ReadSeeker can be used, but some users have observed occasional data races
-// between the net/http library and the Seek functionality of some
-// implementations of ReadSeeker, so should be avoided if possible.
-
 package mockhttp
 
 import (
@@ -27,7 +13,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
 )
@@ -41,10 +26,6 @@ var (
 	// We need to consume response bodies to maintain http connections, but
 	// limit the size we consume to respReadLimit.
 	respReadLimit = int64(4096)
-
-	// defaultDelay is used for mimicing actual http latency.
-	// use milliseconds as unit of measurement.
-	defaultDelay = 1 * time.Millisecond
 )
 
 // Client is used to make HTTP requests. It adds additional functionality
@@ -65,9 +46,6 @@ type Client struct {
 	// The built-in library provides file-based datastore, but it can be easily extended.
 	Resolver ResolverAdapter
 
-	// Delay specifies the delay if mock http call occurs. Default is 0ms
-	Delay time.Duration
-
 	loggerInit sync.Once
 	clientInit sync.Once
 }
@@ -77,7 +55,6 @@ func NewClient(resolver ResolverAdapter) *Client {
 	return &Client{
 		HTTPClient: cleanhttp.DefaultPooledClient(),
 		Logger:     defaultLogger,
-		Delay:      defaultDelay,
 		Resolver:   resolver,
 	}
 }
@@ -107,8 +84,6 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 			c.HTTPClient = cleanhttp.DefaultPooledClient()
 		}
 	})
-
-	startTime := time.Now()
 
 	logger := c.logger()
 	if logger != nil {
@@ -177,7 +152,6 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	}
 	defer c.HTTPClient.CloseIdleConnections()
 
-	time.Sleep(c.Delay - time.Since(startTime))
 	return resp, err
 }
 

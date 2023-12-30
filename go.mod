@@ -4,4 +4,9 @@ go 1.19
 
 require github.com/hashicorp/go-cleanhttp v0.5.2
 
-require gopkg.in/yaml.v2 v2.4.0 // indirect
+require gopkg.in/yaml.v2 v2.4.0
+
+require (
+	github.com/clbanning/mxj v1.8.4
+	github.com/expr-lang/expr v1.15.7
+)
