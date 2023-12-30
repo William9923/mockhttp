@@ -1,10 +1,11 @@
 # mockhttpclient
 
-What I need:
+TODO:
 
-- Datastore adapter => try to read how casbin works... => for now try just to use in memory one... => DONE
-- usecase/mocker.go & usecase/rule_intepreter.go => we need it for the CheckMock
-- using it (+ more refactoring) => i then can apply the same rules, with predefined response?
-
-This is how we will parse the file:
-https://go.dev/play/p/_e5Pz87XiUU
+- Better unit testing:
+  1. collection.go => more unit test on many different case here
+  2. client.go =>
+  3. resolver.go =>
+- Support more than GET & POST, can refer from http client
+- Make better documentation (README) & make better example
+- Learn on how to make integration testing, can refer many sources (like lazygit is pretty good)

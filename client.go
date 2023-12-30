@@ -19,13 +19,8 @@ import (
 
 var (
 	// Default mock configuration
-
 	// defaultLogger is the logger provided with defaultClient
 	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
-
-	// We need to consume response bodies to maintain http connections, but
-	// limit the size we consume to respReadLimit.
-	respReadLimit = int64(4096)
 )
 
 // Client is used to make HTTP requests. It adds additional functionality
@@ -77,7 +72,8 @@ func (c *Client) logger() interface{} {
 	return c.Logger
 }
 
-// Do wraps calling an HTTP method with retries.
+// Do wraps calling an HTTP method with mock possibility.
+// WARN: DON'T USE IT ON PRODUCTION!
 func (c *Client) Do(req *Request) (*http.Response, error) {
 	c.clientInit.Do(func() {
 		if c.HTTPClient == nil {
@@ -176,6 +172,16 @@ func (c *Client) Head(url string) (*http.Response, error) {
 // Post is a convenience method for doing simple POST requests.
 func (c *Client) Post(url, bodyType string, body interface{}) (*http.Response, error) {
 	req, err := NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", bodyType)
+	return c.Do(req)
+}
+
+// Put is a convenience method for doing simple PUT requests.
+func (c *Client) Put(url, bodyType string, body interface{}) (*http.Response, error) {
+	req, err := NewRequest("PUT", url, body)
 	if err != nil {
 		return nil, err
 	}
