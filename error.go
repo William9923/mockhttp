@@ -8,4 +8,5 @@ var (
 	ErrNoMockResponse         = fmt.Errorf("no mock response prepared")
 	ErrUnsupportedContentType = fmt.Errorf("unsupported content type")
 	ErrCommon                 = fmt.Errorf("common error")
+	ErrNoContentType          = fmt.Errorf("unable to find content type")
 )

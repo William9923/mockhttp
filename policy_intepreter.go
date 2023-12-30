@@ -22,7 +22,7 @@ var parsedJSONBodyMimeTypes = []string{
 	"application/json",
 }
 
-var parsedBodyMimeTypes = append(append(parsedJSONBodyMimeTypes, parsedXMLBodyMimeTypes...), parsedFormBodyMimeTypes...)
+var parsedBodyMimeTypes = merge(parsedXMLBodyMimeTypes, parsedJSONBodyMimeTypes, parsedFormBodyMimeTypes)
 
 func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 
@@ -33,13 +33,13 @@ func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 	headers := req.Headers
 	contentType, exist := headers["Content-Type"]
 	if !exist {
-		return fmt.Errorf("unable to find content type")
+		return ErrNoContentType
 	}
 
 	if !some[string](parsedBodyMimeTypes, func(supportedContentType string) bool {
 		return supportedContentType == contentType
 	}) {
-		return fmt.Errorf("unsupported request content type")
+		return ErrUnsupportedContentType
 	}
 
 	return nil
@@ -55,14 +55,13 @@ func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolic
 
 func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy FileBasedMockPolicy) *mockResponse {
 
-	fmt.Println("hid choose response")
-	correctResponse, _ := find[mockResponse](policy.Responses, func(data mockResponse) bool {
-		// lower the priotization of non-rules affected response
+	correctResponse, _ := findFirst[mockResponse](policy.Responses, func(data mockResponse) bool {
+		// lower the priotization of non-rules / default affected response
 		if data.isDefault() {
 			return false
 		}
 
-		return satisfyEvery[string](data.Rules, func(rule string) bool {
+		return all[string](data.Rules, func(rule string) bool {
 			return r.isRuleFulfilled(request, rule)
 		})
 	})
@@ -70,7 +69,8 @@ func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy File
 		return &correctResponse
 	}
 
-	defaultResponse, _ := find[mockResponse](policy.Responses, func(data mockResponse) bool {
+	// if no mock response found, can use default one response (with no rule)
+	defaultResponse, _ := findFirst[mockResponse](policy.Responses, func(data mockResponse) bool {
 		return data.isDefault()
 	})
 	if !defaultResponse.isNil() {
@@ -80,7 +80,6 @@ func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy File
 	return nil
 }
 
-// NOTE: cookie, header, query param, route param, body
 // TODO: change into cel implementation...
 func (r *fileBasedResolver) isRuleFulfilled(request *incomingRequest, rule string) bool {
 	evalRes, err := expr.Eval(rule, map[string]interface{}{

@@ -8,6 +8,7 @@ import (
 
 // RoundTripper implements the http.RoundTripper interface, using a mock-able
 // HTTP client to execute requests.
+// WARN: not intended to be used by outside package, only to support StandardClient
 type roundTripper struct {
 	Client *Client
 }
