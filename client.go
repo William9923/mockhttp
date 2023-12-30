@@ -38,10 +38,6 @@ var (
 	// defaultLogger is the logger provided with defaultClient
 	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 
-	// defaultClient is used for performing requests without explicitly making
-	// a new client. It is purposely private to avoid modifications.
-	defaultClient = NewClient(DefaultResolver())
-
 	// We need to consume response bodies to maintain http connections, but
 	// limit the size we consume to respReadLimit.
 	respReadLimit = int64(4096)
@@ -185,11 +181,6 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	return resp, err
 }
 
-// Get is a shortcut for doing a GET request without making a new client.
-func Get(url string) (*http.Response, error) {
-	return defaultClient.Get(url)
-}
-
 // Get is a convenience helper for doing simple GET requests.
 func (c *Client) Get(url string) (*http.Response, error) {
 	req, err := NewRequest("GET", url, nil)
@@ -199,11 +190,6 @@ func (c *Client) Get(url string) (*http.Response, error) {
 	return c.Do(req)
 }
 
-// Head is a shortcut for doing a HEAD request without making a new client.
-func Head(url string) (*http.Response, error) {
-	return defaultClient.Head(url)
-}
-
 // Head is a convenience method for doing simple HEAD requests.
 func (c *Client) Head(url string) (*http.Response, error) {
 	req, err := NewRequest("HEAD", url, nil)
@@ -211,11 +197,6 @@ func (c *Client) Head(url string) (*http.Response, error) {
 		return nil, err
 	}
 	return c.Do(req)
-}
-
-// Post is a shortcut for doing a POST request without making a new client.
-func Post(url, bodyType string, body interface{}) (*http.Response, error) {
-	return defaultClient.Post(url, bodyType, body)
 }
 
 // Post is a convenience method for doing simple POST requests.
@@ -228,12 +209,6 @@ func (c *Client) Post(url, bodyType string, body interface{}) (*http.Response, e
 	return c.Do(req)
 }
 
-// PostForm is a shortcut to perform a POST with form data without creating
-// a new client.
-func PostForm(url string, data url.Values) (*http.Response, error) {
-	return defaultClient.PostForm(url, data)
-}
-
 // PostForm is a convenience method for doing simple POST operations using
 // pre-filled url.Values form data.
 func (c *Client) PostForm(url string, data url.Values) (*http.Response, error) {
@@ -244,6 +219,6 @@ func (c *Client) PostForm(url string, data url.Values) (*http.Response, error) {
 // shims in a *mockhttp.Client for added retries.
 func (c *Client) StandardClient() *http.Client {
 	return &http.Client{
-		Transport: &RoundTripper{Client: c},
+		Transport: &roundTripper{Client: c},
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,7 +9,18 @@ import (
 )
 
 func main() {
-	mockClient := mockhttp.NewClient(mockhttp.DefaultResolver())
+
+	resolver, err := mockhttp.NewFileResolverAdapter("./example/mock-data")
+	if err != nil {
+		panic(err)
+	}
+
+	err = resolver.LoadPolicy(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	mockClient := mockhttp.NewClient(resolver)
 	mockClient.Delay = 100 * time.Millisecond
 	mockClient.StandardClient().Timeout = 1 * time.Minute
 

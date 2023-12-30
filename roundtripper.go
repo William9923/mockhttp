@@ -2,37 +2,23 @@ package mockhttp
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 )
 
-// RoundTripper implements the http.RoundTripper interface, using a retrying
+// RoundTripper implements the http.RoundTripper interface, using a mock-able
 // HTTP client to execute requests.
-//
-// It is important to note that retryablehttp doesn't always act exactly as a
-// RoundTripper should. This is highly dependent on the retryable client's
-// configuration.
-type RoundTripper struct {
-	// The client to use during requests. If nil, the default retryablehttp
-	// client and settings will be used.
+type roundTripper struct {
 	Client *Client
-
-	// once ensures that the logic to initialize the default client runs at
-	// most once, in a single thread.
-	once sync.Once
-}
-
-// init initializes the underlying mock http client.
-func (rt *RoundTripper) init() {
-	if rt.Client == nil {
-
-	}
 }
 
 // RoundTrip satisfies the http.RoundTripper interface.
-func (rt *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	rt.once.Do(rt.init)
+func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+
+	if rt.Client == nil {
+		return nil, fmt.Errorf("empty client")
+	}
 
 	// Convert the request to be retryable.
 	retryableReq, err := FromRequest(req)
