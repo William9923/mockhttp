@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -25,7 +26,11 @@ func main() {
 	mockClient := mockhttp.NewClient(resolver)
 	mockClient.StandardClient().Timeout = 1 * time.Minute
 
-	resp, err := mockClient.Get("http://google.com/inquiry")
+	reqBody := `{"va": "706081274966275"}`
+	req, _ := http.NewRequest(http.MethodPost, "http://google.com/inquiry", bytes.NewBuffer([]byte(reqBody)))
+	req.Header.Add("Content-Type", "application/json")
+	client := mockClient.StandardClient()
+	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}

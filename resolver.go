@@ -372,7 +372,7 @@ func extractReqBody(req *Request, headers params) (map[string]interface{}, error
 		return supportedContentType == contentType
 	}
 
-	if satisfyAtLeastOne(parsedFormBodyMimeTypes, checker) {
+	if some(parsedFormBodyMimeTypes, checker) {
 		return extractFormReqBody(req)
 	}
 
@@ -380,11 +380,11 @@ func extractReqBody(req *Request, headers params) (map[string]interface{}, error
 	if err != nil {
 		return make(map[string]interface{}), err
 	}
-	if satisfyAtLeastOne(parsedJSONBodyMimeTypes, checker) {
+	if some(parsedJSONBodyMimeTypes, checker) {
 		return parser.ParseJSON(rawBody)
 	}
 
-	if satisfyAtLeastOne(parsedXMLBodyMimeTypes, checker) {
+	if some(parsedXMLBodyMimeTypes, checker) {
 		return parser.ParseXML(rawBody)
 	}
 

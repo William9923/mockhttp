@@ -1,7 +1,6 @@
 package mockhttp
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/expr-lang/expr"

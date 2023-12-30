@@ -227,8 +227,14 @@ func FromRequest(r *http.Request) (*Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Could assert contentLength == r.ContentLength
-	return &Request{body: bodyReader, Request: r}, nil
+	reader, err := bodyReader()
+	if err != nil {
+		return nil, err
+	}
+	reuseableReader := ReusableReader(reader)
+	return &Request{body: func() (io.Reader, error) {
+		return reuseableReader, nil
+	}, Request: r}, nil
 }
 
 // NewRequest creates a new wrapped request.

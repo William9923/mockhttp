@@ -1,6 +1,6 @@
 host: google.com
 path: /inquiry
-method: GET
+method: POST
 desc: SPM Inquiry Endpoint
 responses:
   - response_headers:
