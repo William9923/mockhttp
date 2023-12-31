@@ -117,19 +117,29 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	}
 
 	// Check if we should continue with actual http call / use mock
-	mockResponse, _ := c.Resolver.Resolve(req.Context(), req)
+	mockResponse, err := c.Resolver.Resolve(req.Context(), req)
+	if err != nil {
+		if logger != nil {
+			switch v := logger.(type) {
+			case LeveledLogger:
+				v.Error("error resolving mock response", "err", err)
+			case Logger:
+				v.Printf("[ERROR] error resolving mock response :%s", err.Error())
+			}
+		}
+	}
 	if mockResponse != nil {
 		return mockResponse, nil
 	}
 
-	// Attempt the request
-	resp, err := c.HTTPClient.Do(req.Request)
+	// Only attempt the request if no mock policy found!
+	resp, err = c.HTTPClient.Do(req.Request)
 	if err != nil {
 		switch v := logger.(type) {
 		case LeveledLogger:
 			v.Error("request failed", "error", err, "method", req.Method, "url", req.URL)
 		case Logger:
-			v.Printf("[ERR] %s %s request failed: %v", req.Method, req.URL, err)
+			v.Printf("[ERROR] %s %s request failed: %v", req.Method, req.URL, err)
 		}
 	} else {
 		// Call this here to maintain the behavior of logging all requests,
