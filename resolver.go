@@ -90,48 +90,13 @@ func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 	return nil
 }
 
-type policyStore func(host, method string) []fileBasedMockPolicy
-
-func (r *fileBasedResolver) getAllContainParamRoutes(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.containParams && !policy.containsWildcard
-	})
-	return dataToQuery
-}
-
-func (r *fileBasedResolver) getAllExactEndpointRoutes(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.Host == host && !policy.containParams && !policy.containsWildcard
-	})
-	return dataToQuery
-}
-
-func (r *fileBasedResolver) getAllWildcardRoutes(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.Host == host && policy.containParams && policy.containsWildcard
-	})
-	return dataToQuery
-}
-
-func findWildcard(params []string) bool {
-	for _, param := range params {
-		if param == "*" {
-			return true
-		}
-	}
-	return false
-}
-
 // fileBasedResolver Resolve receive req object and
 // find possible mock response from loaded policy spec file (.yaml)
 //
 // Resolve process (file based) include these steps:
 //  1. Extract request headers (and request body if it was PUT,PATCH,POST,DELETE)
 //  2. Build incoming request data object
-//  3. Find mock response via loaded mock policies. The priorities of the mock policies as below
+//  3. Find mock response via loaded mock policies. The priorities of the mock policies as below:
 //     Exact path (ex: /var/william -> /var/william)
 //     With path parameters (ex: /var/:name -> /var/william)
 //     With wildcard (ex: /var/* -> /var/william)
@@ -174,9 +139,9 @@ func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Re
 	}
 
 	mockResp, err := r.findMockResponse(&request, []policyStore{
-		r.getAllExactEndpointRoutes,
-		r.getAllContainParamRoutes,
-		r.getAllWildcardRoutes,
+		r.getAllExactPathPolicy,
+		r.getAllContainPathParamPolicy,
+		r.getAllHaveWildcardPolicy,
 	})
 	if err != nil {
 		return nil, err
@@ -206,6 +171,11 @@ func (r *fileBasedResolver) findMockResponse(request *incomingRequest, policiesF
 	return nil, ErrNoMockResponse
 }
 
+// fileBasedResolver generateResp
+// Generate http.Response object based on defined response from mock policy.
+//
+// Support templating via Go text/template if `enabled_template` is true
+// The template will be filled with all parameters from request (cookies, headers, path param and query params)
 func (r *fileBasedResolver) generateResp(request *incomingRequest, response *mockResponse) (*http.Response, error) {
 	headers := response.ResponseHeaders
 	statusCode := response.StatusCode
@@ -241,6 +211,67 @@ func (r *fileBasedResolver) generateResp(request *incomingRequest, response *moc
 	}, nil
 }
 
+// --- Repository-like (datastore) function to get policy based on condition ---
+type policyStore func(host, method string) []fileBasedMockPolicy
+
+// fileBasedResolver getAllContainPathParamPolicy
+// Fetch all mock policy that contain path param
+// based on request Host and http method.
+//
+// ex:
+// /v1/api/mock/:id => true (contain path param)
+// /v1/api/mock/1   => false (exact path)
+// /v1/api/mock/*   => false (have wildcard)
+func (r *fileBasedResolver) getAllContainPathParamPolicy(host, method string) []fileBasedMockPolicy {
+	var dataToQuery = r.policies
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
+		return policy.Method == method && policy.containParams && !policy.containsWildcard
+	})
+	return dataToQuery
+}
+
+// fileBasedResolver getAllExactPathPolicy
+// Fetch all mock policy with exact path
+// based on request Host and http method.
+//
+// ex:
+// /v1/api/mock/:id => false (contain path param)
+// /v1/api/mock/1   => true (exact path)
+// /v1/api/mock/*   => false (have wildcard)
+func (r *fileBasedResolver) getAllExactPathPolicy(host, method string) []fileBasedMockPolicy {
+	var dataToQuery = r.policies
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
+		return policy.Method == method && policy.Host == host && !policy.containParams && !policy.containsWildcard
+	})
+	return dataToQuery
+}
+
+// fileBasedResolver getAllHaveWildcardPolicy
+// Fetch all mock policy that have wildcard
+// based on request Host and http method.
+//
+// ex:
+// /v1/api/mock/:id => false (contain path param)
+// /v1/api/mock/1   => false (exact path)
+// /v1/api/mock/*   => true (have wildcard)
+func (r *fileBasedResolver) getAllHaveWildcardPolicy(host, method string) []fileBasedMockPolicy {
+	var dataToQuery = r.policies
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
+		return policy.Method == method && policy.Host == host && policy.containParams && policy.containsWildcard
+	})
+	return dataToQuery
+}
+
+func findWildcard(params []string) bool {
+	for _, param := range params {
+		if param == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+// --- Utility for extracting info from HTTP request ---
 func extractHeader(req *Request) params {
 	headers := make(params)
 	for name, values := range req.Header {
