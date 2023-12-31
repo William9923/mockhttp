@@ -15,6 +15,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Main Resolver Contract
+// 1. LoadPolicy : load policy spec from different datastore (file, database, etc...)
+// 2. Resolve    : check request and return mock response if exist
 type ResolverAdapter interface {
 	LoadPolicy(ctx context.Context) error
 	Resolve(ctx context.Context, req *Request) (*http.Response, error)
@@ -29,6 +32,10 @@ type fileBasedResolver struct {
 	template *template.Template
 }
 
+// NewFileResolverAdapter returns new ResolverAdapter for Mock client,
+// with file based mock policy.
+//
+// param: dir (string) -> directory path where all the policy spec located.
 func NewFileResolverAdapter(dir string) (ResolverAdapter, error) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return nil, err
@@ -40,7 +47,7 @@ func NewFileResolverAdapter(dir string) (ResolverAdapter, error) {
 	}, nil
 }
 
-// LoadPolicy use dir field to search all the policy spec file (.yaml)
+// fileBasedResolver LoadPolicy use dir field to search all the policy spec file (.yaml)
 // and register the policy into the adapter resolver.
 //
 // Also, compile all deferred field from the policy file spec
@@ -118,6 +125,22 @@ func findWildcard(params []string) bool {
 	return false
 }
 
+// fileBasedResolver Resolve receive req object and
+// find possible mock response from loaded policy spec file (.yaml)
+//
+// Resolve process (file based) include these steps:
+//  1. Extract request headers (and request body if it was PUT,PATCH,POST,DELETE)
+//  2. Build incoming request data object
+//  3. Find mock response via loaded mock policies. The priorities of the mock policies as below
+//     Exact path (ex: /var/william -> /var/william)
+//     With path parameters (ex: /var/:name -> /var/william)
+//     With wildcard (ex: /var/* -> /var/william)
+//  4. Return nil with ErrNoMockResponse when no mock policies found
+//  5. Find the correct response defined in mock policies (based on CEL rules).
+//     Mock responses with rules will always be prioritized before mock responses with no rules (default)
+//  6. Generate mock response body (support templating via Go text/template)
+//
+// WARN: req body must be using reuseable reader, as it will be read multiple time during extract request process
 func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Response, error) {
 
 	var (
