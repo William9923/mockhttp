@@ -90,7 +90,7 @@ func findFirst[T any](collections []T, fn func(T) bool) (T, error) {
 }
 
 // Collection Utility Function: merge
-// Merge / flatten as many collections with same type into 1 collection
+// Merge / flatten more than 1 collections with same type into 1 collection
 //
 // Accept any object
 // ex:
@@ -102,4 +102,23 @@ func merge[T any](collections ...[]T) []T {
 		merged = append(merged, collection...)
 	}
 	return merged
+}
+
+// Collection Utility Function: filter
+// Return elements that satisfy defined conditions
+// from a collections
+//
+// Accept any object
+// ex:
+// collections: [1, 2, 3]
+// custom function: less than 3 (func (num int) bool { return num < 3 })
+// output: [1, 2]
+func filter[T any](collections []T, condition func(T) bool) []T {
+	var result []T
+	for _, data := range collections {
+		if condition(data) {
+			result = append(result, data)
+		}
+	}
+	return result
 }

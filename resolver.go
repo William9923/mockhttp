@@ -20,10 +20,11 @@ type ResolverAdapter interface {
 	Resolve(ctx context.Context, req *Request) (*http.Response, error)
 }
 
-// --- File Based Adapter ---
+// File Based Resolver Adapter
+// Use file (.yaml) based policy spec to resolve the mock.
 type fileBasedResolver struct {
 	dir      string
-	policies []FileBasedMockPolicy
+	policies []fileBasedMockPolicy
 	isLoaded atomic.Bool
 	template *template.Template
 }
@@ -34,83 +35,15 @@ func NewFileResolverAdapter(dir string) (ResolverAdapter, error) {
 	}
 	return &fileBasedResolver{
 		dir:      dir,
-		policies: []FileBasedMockPolicy{},
+		policies: []fileBasedMockPolicy{},
 		template: template.New("mock-svc"),
 	}, nil
 }
 
-// --- Model ---
-type FileBasedMockPolicy struct {
-	Host      string         `yaml:"host"`
-	Path      string         `yaml:"path"`
-	Method    string         `yaml:"method"`
-	Desc      string         `yaml:"desc"`
-	Responses []mockResponse `yaml:"responses"`
-
-	// deferred field
-	compiledPath     string
-	params           []string
-	containParams    bool
-	containsWildcard bool
-}
-
-type mockResponse struct {
-	ResponseHeaders map[string]string `yaml:"response_headers"`
-	Rules           []string          `yaml:"rules"`
-	Delay           int               `yaml:"delay"`
-	StatusCode      int               `yaml:"status_code"`
-	EnableTemplate  bool              `yaml:"enable_template"`
-	Body            string            `yaml:"response_body"`
-}
-
-func (r *mockResponse) isNil() bool {
-	return r.StatusCode == 0 && r.Body == "" && len(r.Rules) == 0
-}
-
-func (r *mockResponse) isDefault() bool {
-	return len(r.Rules) == 0
-}
-
-type params map[string]string
-
-func (p params) export() map[string]interface{} {
-	interfaceMap := make(map[string]interface{})
-
-	for key, value := range p {
-		interfaceMap[key] = value
-	}
-
-	return interfaceMap
-}
-
-type incomingRequest struct {
-	Host        string
-	Method      string
-	Endpoint    string
-	Headers     params
-	Cookies     params
-	QueryParams params
-	RouteParams params
-	Body        map[string]interface{}
-	RawBody     string
-}
-
-func (req incomingRequest) collectAllParams() params {
-	return mergeMaps([]params{req.QueryParams, req.Cookies, req.Headers, req.RouteParams})
-}
-
-func mergeMaps(data []params) params {
-	merged := make(params)
-	for _, param := range data {
-		for key, value := range param {
-			merged[key] = value
-		}
-	}
-	return merged
-}
-
-// --- LOAD ---
-
+// LoadPolicy use dir field to search all the policy spec file (.yaml)
+// and register the policy into the adapter resolver.
+//
+// Also, compile all deferred field from the policy file spec
 func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 	if r.isLoaded.Load() {
 		return ErrPolicyLoaded
@@ -131,7 +64,7 @@ func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 			return err
 		}
 
-		var policy FileBasedMockPolicy
+		var policy fileBasedMockPolicy
 		err = yaml.Unmarshal(f, &policy)
 		if err != nil {
 			return err
@@ -150,39 +83,27 @@ func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 	return nil
 }
 
-// --- Get Policies Functions ---
-func filterByCondition(collections []FileBasedMockPolicy, condition func(FileBasedMockPolicy) bool) []FileBasedMockPolicy {
-	var result []FileBasedMockPolicy
-	for _, data := range collections {
-		if condition(data) {
-			result = append(result, data)
-		}
-	}
+type policyStore func(host, method string) []fileBasedMockPolicy
 
-	return result
-}
-
-type policyStore func(host, method string) []FileBasedMockPolicy
-
-func (r *fileBasedResolver) getAllContainParamRoutes(host, method string) []FileBasedMockPolicy {
+func (r *fileBasedResolver) getAllContainParamRoutes(host, method string) []fileBasedMockPolicy {
 	var dataToQuery = r.policies
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
 		return policy.Method == method && policy.containParams && !policy.containsWildcard
 	})
 	return dataToQuery
 }
 
-func (r *fileBasedResolver) getAllExactEndpointRoutes(host, method string) []FileBasedMockPolicy {
+func (r *fileBasedResolver) getAllExactEndpointRoutes(host, method string) []fileBasedMockPolicy {
 	var dataToQuery = r.policies
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
 		return policy.Method == method && policy.Host == host && !policy.containParams && !policy.containsWildcard
 	})
 	return dataToQuery
 }
 
-func (r *fileBasedResolver) getAllWildcardRoutes(host, method string) []FileBasedMockPolicy {
+func (r *fileBasedResolver) getAllWildcardRoutes(host, method string) []fileBasedMockPolicy {
 	var dataToQuery = r.policies
-	dataToQuery = filterByCondition(dataToQuery, func(policy FileBasedMockPolicy) bool {
+	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
 		return policy.Method == method && policy.Host == host && policy.containParams && policy.containsWildcard
 	})
 	return dataToQuery

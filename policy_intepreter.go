@@ -44,7 +44,7 @@ func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 	return nil
 }
 
-func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolicy FileBasedMockPolicy) (*mockResponse, error) {
+func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolicy fileBasedMockPolicy) (*mockResponse, error) {
 
 	if err := r.validateTarget(request); err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolic
 	return r.chooseResponse(request, selectedPolicy), nil
 }
 
-func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy FileBasedMockPolicy) *mockResponse {
+func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy fileBasedMockPolicy) *mockResponse {
 
 	correctResponse, _ := findFirst[mockResponse](policy.Responses, func(data mockResponse) bool {
 		// lower the priotization of non-rules / default affected response
