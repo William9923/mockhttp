@@ -1,7 +1,7 @@
 host: google.com
 path: /inquiry
 method: POST
-desc: SPM Inquiry Endpoint
+desc: Testing Inquiry Endpoint
 responses:
   - response_headers:
       Content-Type: application/json
@@ -9,7 +9,7 @@ responses:
     status_code: 200
   - response_headers:
       Content-Type: application/json
-    response_body: "{\"user_name\": \"William\",\r\n \"status_code\": 488,\r\n  \"error\": \"SPM Server Error\"}"
+    response_body: "{\"user_name\": \"William\",\r\n \"status_code\": 488,\r\n  \"error\": \"Testing Server Error\"}"
     delay: 1000
     status_code: 488
     enable_template: false

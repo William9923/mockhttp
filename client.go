@@ -170,22 +170,12 @@ func (c *Client) Head(url string) (*http.Response, error) {
 }
 
 // Post is a convenience method for doing simple POST requests.
-func (c *Client) Post(url, bodyType string, body interface{}) (*http.Response, error) {
+func (c *Client) Post(url, contentType string, body interface{}) (*http.Response, error) {
 	req, err := NewRequest("POST", url, body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", bodyType)
-	return c.Do(req)
-}
-
-// Put is a convenience method for doing simple PUT requests.
-func (c *Client) Put(url, bodyType string, body interface{}) (*http.Response, error) {
-	req, err := NewRequest("PUT", url, body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", bodyType)
+	req.Header.Set("Content-Type", contentType)
 	return c.Do(req)
 }
 
