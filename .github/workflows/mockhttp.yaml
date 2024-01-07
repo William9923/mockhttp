@@ -1,4 +1,4 @@
-name: Build
+name: build and test
 on:
   push:
 jobs:
@@ -31,7 +31,7 @@ jobs:
       - name: Run unit tests
         run: |- 
           go test -v -race -coverprofile cover.out.tmp ./...
-          cat cover.out.tmp | grep -v "_mock.go" > cover.out
+          grep -v "_mock.go" < cover.out.tmp > cover.out
           go tool cover -func=cover.out
 permissions:
   contents: read
