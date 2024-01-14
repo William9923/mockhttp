@@ -25,7 +25,7 @@ var parsedBodyMimeTypes = merge(parsedXMLBodyMimeTypes, parsedJSONBodyMimeTypes,
 
 func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 
-	if !in[string](req.Method, []string{http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete}) {
+	if in[string](req.Method, []string{http.MethodGet, http.MethodHead, http.MethodDelete}) {
 		return nil
 	}
 

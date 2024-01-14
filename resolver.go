@@ -116,7 +116,7 @@ func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Re
 
 	headers := extractHeader(req)
 
-	if in[string](req.Method, []string{http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete}) {
+	if req.Body != nil {
 		rawBody, err = extractRawBody(req)
 		if err != nil {
 			return nil, err
