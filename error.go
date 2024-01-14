@@ -3,7 +3,7 @@ package mockhttp
 import "fmt"
 
 var (
-	ErrPolicyLoaded           = fmt.Errorf("policy loaded")
+	ErrDefinitionLoaded       = fmt.Errorf("mock definition had been loaded")
 	ErrClientMissing          = fmt.Errorf("client missing")
 	ErrNoMockResponse         = fmt.Errorf("no mock response prepared")
 	ErrUnsupportedContentType = fmt.Errorf("unsupported content type")

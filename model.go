@@ -1,6 +1,6 @@
 package mockhttp
 
-type fileBasedMockPolicy struct {
+type fileBasedMockDefinition struct {
 	Host      string         `yaml:"host"`
 	Path      string         `yaml:"path"`
 	Method    string         `yaml:"method"`

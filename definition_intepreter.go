@@ -44,17 +44,17 @@ func (r *fileBasedResolver) validateTarget(req *incomingRequest) error {
 	return nil
 }
 
-func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedPolicy fileBasedMockPolicy) (*mockResponse, error) {
+func (r *fileBasedResolver) findResponse(request *incomingRequest, selectedDefinition fileBasedMockDefinition) (*mockResponse, error) {
 
 	if err := r.validateTarget(request); err != nil {
 		return nil, err
 	}
-	return r.chooseResponse(request, selectedPolicy), nil
+	return r.chooseResponse(request, selectedDefinition), nil
 }
 
-func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy fileBasedMockPolicy) *mockResponse {
+func (r *fileBasedResolver) chooseResponse(request *incomingRequest, definition fileBasedMockDefinition) *mockResponse {
 
-	correctResponse, _ := findFirst[mockResponse](policy.Responses, func(data mockResponse) bool {
+	correctResponse, _ := findFirst[mockResponse](definition.Responses, func(data mockResponse) bool {
 		// lower the priotization of non-rules / default affected response
 		if data.isDefault() {
 			return false
@@ -69,7 +69,7 @@ func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy file
 	}
 
 	// if no mock response found, can use default one response (with no rule)
-	defaultResponse, _ := findFirst[mockResponse](policy.Responses, func(data mockResponse) bool {
+	defaultResponse, _ := findFirst[mockResponse](definition.Responses, func(data mockResponse) bool {
 		return data.isDefault()
 	})
 	if !defaultResponse.isNil() {
@@ -79,7 +79,6 @@ func (r *fileBasedResolver) chooseResponse(request *incomingRequest, policy file
 	return nil
 }
 
-// TODO: change into cel implementation...
 func (r *fileBasedResolver) isRuleFulfilled(request *incomingRequest, rule string) bool {
 	evalRes, err := expr.Eval(rule, map[string]interface{}{
 		"raw":         request.RawBody,

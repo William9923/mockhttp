@@ -1,7 +1,3 @@
-// standard net/http client library and exposes nearly the same public API.
-// This makes mocking http response very easy to drop into existing programs.
-//
-// mockhttp performs mock if enabled. Inspired by retryablehttp by hashicorp.
 package mockhttp
 
 import (
@@ -24,7 +20,7 @@ var (
 )
 
 // Client is used to make HTTP requests. It adds additional functionality
-// like automatic retries to tolerate minor outages.
+// for testing purposes to mock certain http requests based on mock definition.
 type Client struct {
 	HTTPClient *http.Client // Internal HTTP client.
 	Logger     interface{}  // Customer logger instance. Can be either Logger or LeveledLogger
@@ -37,15 +33,15 @@ type Client struct {
 	// with the response from each HTTP request executed.
 	ResponseLogHook ResponseLogHook
 
-	// MockStore represents the datastore.
-	// The built-in library provides file-based datastore, but it can be easily extended.
+	// Resolver represents the mock definition resolver.
+	// The built-in library provides file-based datastore, but it can be easily extended to use any other datastore.
 	Resolver ResolverAdapter
 
 	loggerInit sync.Once
 	clientInit sync.Once
 }
 
-// NewClient creates a new Client with default settings.
+// NewClient creates a new mockhttp Client with default settings.
 func NewClient(resolver ResolverAdapter) *Client {
 	return &Client{
 		HTTPClient: cleanhttp.DefaultPooledClient(),
@@ -72,8 +68,8 @@ func (c *Client) logger() interface{} {
 	return c.Logger
 }
 
-// Do wraps calling an HTTP method with mock possibility.
-// WARN: DON'T USE IT ON PRODUCTION!
+// Do wraps calling an HTTP method to also check if the request
+// should be mock or not, based on mock definition loaded during client initialization.
 func (c *Client) Do(req *Request) (*http.Response, error) {
 	c.clientInit.Do(func() {
 		if c.HTTPClient == nil {
@@ -132,7 +128,7 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		return mockResponse, nil
 	}
 
-	// Only attempt the request if no mock policy found!
+	// Only attempt the request if no mock definition found!
 	resp, err = c.HTTPClient.Do(req.Request)
 	if err != nil {
 		switch v := logger.(type) {

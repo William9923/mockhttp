@@ -15,45 +15,47 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Main Resolver Contract
-// 1. LoadPolicy : load policy spec from different datastore (file, database, etc...)
-// 2. Resolve    : check request and return mock response if exist
+// Resolver Adapter Contract:
+// 1. LoadDefinition : load mock definition spec from different datastore (file, database, etc...)
+// 2. Resolve        : check request and return mock response if exist
+//
+// used to build any datastore adapter, as long as it able to resolve mock definition properties from http request
 type ResolverAdapter interface {
-	LoadPolicy(ctx context.Context) error
+	LoadDefinition(ctx context.Context) error
 	Resolve(ctx context.Context, req *Request) (*http.Response, error)
 }
 
 // File Based Resolver Adapter
-// Use file (.yaml) based policy spec to resolve the mock.
+// Use file (.yaml) based mock definition spec to resolve the mock.
 type fileBasedResolver struct {
-	dir      string
-	policies []fileBasedMockPolicy
-	isLoaded atomic.Bool
-	template *template.Template
+	dir         string
+	definitions []fileBasedMockDefinition
+	isLoaded    atomic.Bool
+	template    *template.Template
 }
 
 // NewFileResolverAdapter returns new ResolverAdapter for Mock client,
-// with file based mock policy.
+// with file based mock definition.
 //
-// param: dir (string) -> directory path where all the policy spec located.
+// param: dir (string) -> directory path where all the mock definition specs located.
 func NewFileResolverAdapter(dir string) (ResolverAdapter, error) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return nil, err
 	}
 	return &fileBasedResolver{
-		dir:      dir,
-		policies: []fileBasedMockPolicy{},
-		template: template.New("mock-svc"),
+		dir:         dir,
+		definitions: []fileBasedMockDefinition{},
+		template:    template.New("mock-svc"),
 	}, nil
 }
 
-// fileBasedResolver LoadPolicy use dir field to search all the policy spec file (.yaml)
-// and register the policy into the adapter resolver.
+// fileBasedResolver LoadDefinition use dir field to search all the mock definition specs file (.yaml)
+// and register the definitions into the adapter resolver.
 //
-// Also, compile all deferred field from the policy file spec
-func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
+// Also, compile all deferred field from the definitions file spec
+func (r *fileBasedResolver) LoadDefinition(ctx context.Context) error {
 	if r.isLoaded.Load() {
-		return ErrPolicyLoaded
+		return ErrDefinitionLoaded
 	}
 
 	fileItems, err := os.ReadDir(r.dir)
@@ -71,19 +73,19 @@ func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 			return err
 		}
 
-		var policy fileBasedMockPolicy
-		err = yaml.Unmarshal(f, &policy)
+		var definition fileBasedMockDefinition
+		err = yaml.Unmarshal(f, &definition)
 		if err != nil {
 			return err
 		}
 
-		compiledRegex, params := pathregex.CompilePath(policy.Path, true, true)
-		policy.compiledPath = compiledRegex.String()
-		policy.params = params
-		policy.containParams = len(params) > 0
-		policy.containsWildcard = findWildcard(params)
+		compiledRegex, params := pathregex.CompilePath(definition.Path, true, true)
+		definition.compiledPath = compiledRegex.String()
+		definition.params = params
+		definition.containParams = len(params) > 0
+		definition.containsWildcard = findWildcard(params)
 
-		r.policies = append(r.policies, policy)
+		r.definitions = append(r.definitions, definition)
 	}
 
 	r.isLoaded.Store(true)
@@ -91,17 +93,17 @@ func (r *fileBasedResolver) LoadPolicy(ctx context.Context) error {
 }
 
 // fileBasedResolver Resolve receive req object and
-// find possible mock response from loaded policy spec file (.yaml)
+// find possible mock response from loaded mock definitions spec file (.yaml)
 //
 // Resolve process (file based) include these steps:
 //  1. Extract request headers (and request body if it was PUT,PATCH,POST,DELETE)
 //  2. Build incoming request data object
-//  3. Find mock response via loaded mock policies. The priorities of the mock policies as below:
+//  3. Find mock response via loaded mock definitions. The priorities of the mock definitions as below:
 //     Exact path (ex: /var/william -> /var/william)
 //     With path parameters (ex: /var/:name -> /var/william)
 //     With wildcard (ex: /var/* -> /var/william)
-//  4. Return nil with ErrNoMockResponse when no mock policies found
-//  5. Find the correct response defined in mock policies (based on CEL rules).
+//  4. Return nil with ErrNoMockResponse when no mock definitions found
+//  5. Find the correct response defined in mock definitions (based on CEL rules).
 //     Mock responses with rules will always be prioritized before mock responses with no rules (default)
 //  6. Generate mock response body (support templating via Go text/template)
 //
@@ -138,10 +140,10 @@ func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Re
 		RawBody:     rawBody,
 	}
 
-	mockResp, err := r.findMockResponse(&request, []policyStore{
-		r.getAllExactPathPolicy,
-		r.getAllContainPathParamPolicy,
-		r.getAllHaveWildcardPolicy,
+	mockResp, err := r.findMockResponse(&request, []mockDefinitionsStore{
+		r.getAllExactPathDefinitions,
+		r.getAllContainPathParamDefinitions,
+		r.getAllHaveWildcardDefinitions,
 	})
 	if err != nil {
 		return nil, err
@@ -153,13 +155,13 @@ func (r *fileBasedResolver) Resolve(ctx context.Context, req *Request) (*http.Re
 	return r.generateResp(&request, mockResp)
 }
 
-func (r *fileBasedResolver) findMockResponse(request *incomingRequest, policiesFn []policyStore) (*mockResponse, error) {
-	for _, fn := range policiesFn {
-		for _, policy := range fn(request.Host, request.Method) {
-			if isMatch := pathregex.MatchPath(request.Endpoint, policy.Path); isMatch {
-				params := pathregex.ExtractPathParam(request.Endpoint, policy.Path)
+func (r *fileBasedResolver) findMockResponse(request *incomingRequest, definitionsFn []mockDefinitionsStore) (*mockResponse, error) {
+	for _, fn := range definitionsFn {
+		for _, definition := range fn(request.Host, request.Method) {
+			if isMatch := pathregex.MatchPath(request.Endpoint, definition.Path); isMatch {
+				params := pathregex.ExtractPathParam(request.Endpoint, definition.Path)
 				request.RouteParams = params
-				resp, err := r.findResponse(request, policy)
+				resp, err := r.findResponse(request, definition)
 				if err != nil {
 					return nil, err
 				}
@@ -172,7 +174,7 @@ func (r *fileBasedResolver) findMockResponse(request *incomingRequest, policiesF
 }
 
 // fileBasedResolver generateResp
-// Generate http.Response object based on defined response from mock policy.
+// Generate http.Response object based on defined response from mock definition.
 //
 // Support templating via Go text/template if `enabled_template` is true
 // The template will be filled with all parameters from request (cookies, headers, path param and query params)
@@ -211,53 +213,53 @@ func (r *fileBasedResolver) generateResp(request *incomingRequest, response *moc
 	}, nil
 }
 
-// --- Repository-like (datastore) function to get policy based on condition ---
-type policyStore func(host, method string) []fileBasedMockPolicy
+// --- Repository-like (datastore) function to get definition based on condition ---
+type mockDefinitionsStore func(host, method string) []fileBasedMockDefinition
 
-// fileBasedResolver getAllContainPathParamPolicy
-// Fetch all mock policy that contain path param
+// fileBasedResolver getAllContainPathParamDefinitions
+// Fetch all mock definitions that contain path param
 // based on request Host and http method.
 //
 // ex:
 // /v1/api/mock/:id => true (contain path param)
 // /v1/api/mock/1   => false (exact path)
 // /v1/api/mock/*   => false (have wildcard)
-func (r *fileBasedResolver) getAllContainPathParamPolicy(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.containParams && !policy.containsWildcard
+func (r *fileBasedResolver) getAllContainPathParamDefinitions(host, method string) []fileBasedMockDefinition {
+	var dataToQuery = r.definitions
+	dataToQuery = filter[fileBasedMockDefinition](dataToQuery, func(definition fileBasedMockDefinition) bool {
+		return definition.Method == method && definition.containParams && !definition.containsWildcard
 	})
 	return dataToQuery
 }
 
-// fileBasedResolver getAllExactPathPolicy
-// Fetch all mock policy with exact path
+// fileBasedResolver getAllExactPathDefinitions
+// Fetch all mock definitions with exact path
 // based on request Host and http method.
 //
 // ex:
 // /v1/api/mock/:id => false (contain path param)
 // /v1/api/mock/1   => true (exact path)
 // /v1/api/mock/*   => false (have wildcard)
-func (r *fileBasedResolver) getAllExactPathPolicy(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.Host == host && !policy.containParams && !policy.containsWildcard
+func (r *fileBasedResolver) getAllExactPathDefinitions(host, method string) []fileBasedMockDefinition {
+	var dataToQuery = r.definitions
+	dataToQuery = filter[fileBasedMockDefinition](dataToQuery, func(definition fileBasedMockDefinition) bool {
+		return definition.Method == method && definition.Host == host && !definition.containParams && !definition.containsWildcard
 	})
 	return dataToQuery
 }
 
-// fileBasedResolver getAllHaveWildcardPolicy
-// Fetch all mock policy that have wildcard
+// fileBasedResolver getAllHaveWildcardDefinitions
+// Fetch all mock definitions that have wildcard
 // based on request Host and http method.
 //
 // ex:
 // /v1/api/mock/:id => false (contain path param)
 // /v1/api/mock/1   => false (exact path)
 // /v1/api/mock/*   => true (have wildcard)
-func (r *fileBasedResolver) getAllHaveWildcardPolicy(host, method string) []fileBasedMockPolicy {
-	var dataToQuery = r.policies
-	dataToQuery = filter[fileBasedMockPolicy](dataToQuery, func(policy fileBasedMockPolicy) bool {
-		return policy.Method == method && policy.Host == host && policy.containParams && policy.containsWildcard
+func (r *fileBasedResolver) getAllHaveWildcardDefinitions(host, method string) []fileBasedMockDefinition {
+	var dataToQuery = r.definitions
+	dataToQuery = filter[fileBasedMockDefinition](dataToQuery, func(definition fileBasedMockDefinition) bool {
+		return definition.Method == method && definition.Host == host && definition.containParams && definition.containsWildcard
 	})
 	return dataToQuery
 }

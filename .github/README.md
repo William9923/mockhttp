@@ -1,6 +1,8 @@
 # go-mockhttp
 
-[![build and test](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml/badge.svg?branch=master)](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml)
+[![Build](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml/badge.svg?branch=master)](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml)
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/William9923/go-mockhttp.svg)](https://pkg.go.dev/github.com/William9923/go-mockhttp)
 
 ### Overview
 
@@ -63,12 +65,12 @@ that relates heavily on exchanging actual data to upstream service. Specifically
 
 ### Get Started
 
-Version 0.1.0 and before are requiring Go version 1.13+.
+Version 0.2.1 and before are requiring Go version 1.13+.
 
 #### Installation
 
 ```bash
-go get github.com/William9923/go-mockhttp
+go get github.com/William9923/go-mockhttp@latest
 ```
 
 #### Examples
@@ -78,12 +80,12 @@ Using this library should look almost identical to what you would do with net/ht
 ```go
 ...
 
-  resolver, err := mockhttp.NewFileResolverAdapter(policyDirPath)
+  resolver, err := mockhttp.NewFileResolverAdapter(definitionDirPath)
   if err != nil {
     panic(err)
   }
 
-  err = resolver.LoadPolicy(context.Background())
+  err = resolver.LoadDefinition(context.Background())
   if err != nil {
     panic(err)
   }
@@ -103,10 +105,22 @@ The returned response object is an \*http.Response, the same thing you would usu
 
 What will the library try to improve in the future?
 
+- As of now, the mock **delay** haven't been able to be integrated in the
+  library. It will be the utmost priority for next version!
 - Provide more example for easier adoption of the library in any existing projects.
 - Additional adapter supports (inspired by [casbin](https://casbin.org/docs/adapters)), to allow more ways to load **Mock Definition** from different storage.
 - Extending ways to use **Mock Definition** in other language (not only Go), as **Mock Definition** can be used cross-language.
 - Build mockhttp as a service instead of a library, to accomodate for non-Go service that would like to utilize it (**Mock as a Service**).
+
+### Limitations!
+
+- Due to `go-mockhttp` usage that intervene directly of any http call, it is
+  not advised to use the http.Client created by `go-mockhttp` to PRODUCTION!.
+  You can find workaround on this by providing flags or by config to determine
+  whether to use standard `net/http` http client or `go-mockhttp` http client
+  during app / client initialization.
+- `go-mockhttp` currently only support mock based on file (via mock definition
+  files). Other datastore to load the mock definition still haven't supported!
 
 ### FAQ
 
@@ -179,5 +193,4 @@ There are 2 conditions that might happen:
 2. Request match `host`, `path`, and `method`, but didn't satisfy the rules in responses => will try to use default response (response with no rules). If no default response defined, will simply call actual upstream service.
 
 ### License
-
-This project is under the MIT license.
+Distributed under the MIT License. See LICENSE.txt for more information.
