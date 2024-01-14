@@ -1,8 +1,14 @@
 # go-mockhttp
 
-[![Build](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml/badge.svg?branch=master)](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml)
-
-[![Go Reference](https://pkg.go.dev/badge/github.com/William9923/go-mockhttp.svg)](https://pkg.go.dev/github.com/William9923/go-mockhttp)
+<a href="https://pkg.go.dev/github.com/William9923/go-mockhttp">
+    <img src="https://pkg.go.dev/badge/github.com/William9923/go-mockhttp.svg">
+</a>
+<a href="https://goreportcard.com/report/github.com/william9923/go-mockhttp">
+    <img src="https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat">
+</a>
+<a href="https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml">
+    <img src="https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml/badge.svg?branch=master">
+</a>
 
 ### Overview
 
