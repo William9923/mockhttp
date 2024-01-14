@@ -2,18 +2,6 @@
 
 [![build and test](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml/badge.svg?branch=master)](https://github.com/William9923/go-mockhttp/actions/workflows/mockhttp.yaml)
 
-TODO:
-
-- Make a better representation (image) , can be using tldraw alone => or if you find ways to illustrate via gif, even better => https://github.com/dai-shi/excalidraw-animate
-- Make badge for the CI result => DONE
-- Make Mock Definition specification
-- Extract example into full fledge example golang project => let's try find some good example
-- Future works => refer casbin, essentially, want more ways to provide mocks adapter (database, redis, etc...). Also, exploring ways to create rule even more flexible. Mock server for even more language agnostic approach for stubbing upstream service. => DONE
-
-A gif / representation
-
-<Table of content here bro...>
-
 ### Overview
 
 #### Problem
