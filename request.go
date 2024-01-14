@@ -223,18 +223,22 @@ func getBodyReaderAndContentLength(rawBody interface{}) (ReaderFunc, int64, erro
 
 // FromRequest wraps an http.Request in a retryablehttp.Request
 func FromRequest(r *http.Request) (*Request, error) {
-	bodyReader, _, err := getBodyReaderAndContentLength(r.Body)
-	if err != nil {
-		return nil, err
+	if r.Body != nil {
+		bodyReader, _, err := getBodyReaderAndContentLength(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		reader, err := bodyReader()
+		if err != nil {
+			return nil, err
+		}
+		reuseableReader := ReusableReader(reader)
+		return &Request{body: func() (io.Reader, error) {
+			return reuseableReader, nil
+		}, Request: r}, nil
+	} else {
+		return &Request{Request: r}, nil
 	}
-	reader, err := bodyReader()
-	if err != nil {
-		return nil, err
-	}
-	reuseableReader := ReusableReader(reader)
-	return &Request{body: func() (io.Reader, error) {
-		return reuseableReader, nil
-	}, Request: r}, nil
 }
 
 // NewRequest creates a new wrapped request.
