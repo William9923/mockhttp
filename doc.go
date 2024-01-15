@@ -1,3 +1,9 @@
+// Copyright 2009 The Go Authors. All rights reserved.
+
+// Use of this source code is governed by a BSD-style
+
+// license that can be found in the LICENSE file.
+
 /*
 The go-mockhttp package extend standard net/http client library to provide a familiar HTTP client interface but with mock capabilities for testing.
 It is a thin wrapper over the standard net/http client library and exposes nearly the same public API.
@@ -112,5 +118,4 @@ Here are the example on how to use the library:
 	  panic(err)
 	}
 */
-
 package mockhttp
